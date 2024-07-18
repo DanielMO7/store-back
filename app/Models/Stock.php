@@ -7,19 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
 
-class Product extends Model
+class Stock extends Model
 {
-    protected $table = 'products';
+    protected $table = 'stock';
     use HasFactory;
-
-    public function getProduct()
+    public function getStock()
     {
         try {
-            $customer = Product::all();
+            $customer = Stock::all();
 
             return response()->json([
                 'status' => 1,
-                'msg' => 'Productos entregados correctamente',
+                'msg' => 'Stock entregado correctamente',
                 'data' => $customer
             ], 200);
         } catch (QueryException $e) {
@@ -31,12 +30,11 @@ class Product extends Model
         }
     }
 
-    public function createProduct($request)
+    public function createStock($request)
     {
         $validator = Validator::make($request->all(), [
-            'Code' => 'required|string|unique:products,Code|max:255',
-            'Name' => 'required|string|max:255',
-            'Value' => 'required|numeric|between:0,999999.99',
+            'ProductID' => 'required|exists:products,id',
+            'AmountStock' => 'required|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -48,16 +46,23 @@ class Product extends Model
         }
         try {
 
-            $book = new Product();
-            $book->Code = $request->Code;
-            $book->Name = $request->Name;
-            $book->Value = $request->Value;
-            $book->save();
+            $existingStock = Stock::where('ProductID', $request->ProductID)->first();
 
+            if ($existingStock) {
+                $existingStock->AmountStock += $request->AmountStock;
+                $existingStock->save();
+            } else {
+                $stock = new Stock();
+                $stock->ProductID = $request->ProductID;
+                $stock->AmountStock = $request->AmountStock;
+                $stock->save();
+            }
+
+            // Respuesta de éxito
             return response()->json([
                 'status' => 1,
-                'msg' => 'Producto creado correctamente',
-                'data' => $book
+                'msg' => 'Movimiento de stock realizado correctamente',
+                'data' => $existingStock ? $existingStock : $stock
             ], 200);
         } catch (QueryException $e) {
             return  response()->json([
@@ -67,5 +72,4 @@ class Product extends Model
             ], 500);
         }
     }
-
 }
